@@ -18,51 +18,59 @@ The system uses a message-driven, serverless architecture. The primary execution
 
 ```mermaid
 graph TD
-  %% Local Development & Testing
-  subgraph LocalDev["Local Development & Testing"]
+  %% === Local Development & Testing ===
+  subgraph LOCAL_DEV["Local Development & Testing"]
     direction LR
-    dev[Developer] -->|1. run python notebook_style_runner.py LH505| cli[CLI / Notebook Runner]
-    cli -->|2. loads config| env[.env file]
-    cli -->|3. executes agent logic| local_agent[Strands Agent (Local)]
+    dev[Developer]
+    cli[CLI Runner]
+    env_file[.env file]
+    local_agent[Strands Agent Local]
+    streamlit[Streamlit Dashboard]
+    sqs_in[SQS Input Queue]
+    sqs_out[SQS Output Queue]
 
-    subgraph LocalViz["Local Result Visualization"]
-      streamlit_app[Streamlit Dashboard] -->|polls results| sqs_output[SQS Output Queue]
-      streamlit_app -->|sends trigger| sqs_input[SQS Input Queue]
-      dev -->|runs streamlit run| streamlit_app
-    end
+    dev -->|run local command| cli
+    cli -->|load config| env_file
+    cli -->|execute agent| local_agent
+    dev -->|start dashboard| streamlit
+    streamlit -->|send trigger| sqs_in
+    streamlit -->|poll results| sqs_out
   end
 
-  %% AWS Cloud Production
-  subgraph AWSCloud["AWS Cloud Production"]
+  %% === AWS Cloud Production ===
+  subgraph AWS_CLOUD["AWS Cloud Production"]
     direction TB
-    subgraph Deploy["Deployment Pipeline"]
-      repo[Code Repository] -->|docker build| docker[Docker Image]
-      docker -->|docker push| ecr[Amazon ECR]
-    end
+    repo[Code Repository]
+    docker_img[Docker Image]
+    ecr[ECR Repository]
+    lambda_fn[AWS Lambda Function]
+    lambda_agent[Strands Agent Lambda]
 
-    subgraph Serverless["Serverless Execution"]
-      sqs_input -->|event 4a| lambda_func[AWS Lambda Function]
-      ecr -->|deploys image| lambda_func
-      lambda_func -->|contains| lambda_agent[Strands Agent (Lambda)]
-    end
+    repo -->|docker build| docker_img
+    docker_img -->|push| ecr
+    sqs_in -->|event| lambda_fn
+    ecr -->|deploy image| lambda_fn
+    lambda_fn -->|runs| lambda_agent
   end
 
-  %% Shared Services
-  subgraph Shared["Shared AWS & External Services"]
+  %% === Shared Services ===
+  subgraph SHARED["Shared Services"]
     bedrock[Amazon Bedrock]
-    weather[Weather API]
-    sqs_output
+    weather_api[Weather API]
   end
 
-  %% Data and Logic Flows
-  local_agent -->|fetch flight data| data_csv[flight_plans.csv]
-  lambda_agent -->|fetch flight data| data_csv_lambda[flight_plans.csv (container)]
-  local_agent -->|invoke LLM| bedrock
-  lambda_agent -->|invoke LLM| bedrock
-  local_agent -->|fetch weather| weather
-  lambda_agent -->|fetch weather| weather
-  local_agent -->|publish recommendation| sqs_output
-  lambda_agent -->|publish recommendation| sqs_output
+  %% === Data Flows ===
+  local_agent -->|fetch flight data| flight_csv[flight_plans.csv]
+  lambda_agent -->|fetch flight data| flight_csv_lambda[flight_plans.csv container]
+
+  local_agent -->|invoke llm| bedrock
+  lambda_agent -->|invoke llm| bedrock
+
+  local_agent -->|fetch weather| weather_api
+  lambda_agent -->|fetch weather| weather_api
+
+  local_agent -->|publish recommendation| sqs_out
+  lambda_agent -->|publish recommendation| sqs_out
 ```
 
 ---
