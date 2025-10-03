@@ -1,8 +1,4 @@
 # === Fuel Optimization Agent: Standalone Optimizer ===
-#
-# Author: [Your Name/Team Name]
-# Date: [Current Date]
-#
 # This single file contains the entire application, refactored from its original
 # Colab notebook format to be runnable in any local Integrated Development Environment (IDE)
 # such as Visual Studio Code, PyCharm, etc. It is designed for easy, self-contained
