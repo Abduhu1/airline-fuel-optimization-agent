@@ -17,68 +17,64 @@ The system is architected with a serverless-first philosophy. While it can be ru
 The system uses a message-driven, serverless architecture. The primary execution environment is AWS Lambda, but the project also supports local development and visualization with an interactive Streamlit dashboard.
 
 ```mermaid
-graph TD;
-    %% Define fontawesome icons for better visualization
-    subgraph "Local Development & Testing Environment"
-        direction LR
-        dev[Developer] --> |1. Runs command| cli[python notebook_style_runner.py LH505]
-        cli --> |2. Loads config| env[.env file]
-        cli --> |3. Executes Agent Logic| local_agent[Strands Agent (Local)]
+graph TD
+  %% Local Development & Testing
+  subgraph LocalDev["Local Development & Testing"]
+    direction LR
+    dev[Developer] -->|1. run python notebook_style_runner.py LH505| cli[CLI / Notebook Runner]
+    cli -->|2. loads config| env[.env file]
+    cli -->|3. executes agent logic| local_agent[Strands Agent (Local)]
 
-        subgraph "Local Result Visualization"
-            streamlit_app[Streamlit Dashboard] --> |9. Polls for results| sqs_output
-            streamlit_app --> |Sends Trigger| sqs_input
-            dev --> |Runs streamlit run| streamlit_app
-        end
+    subgraph LocalViz["Local Result Visualization"]
+      streamlit_app[Streamlit Dashboard] -->|polls results| sqs_output[SQS Output Queue]
+      streamlit_app -->|sends trigger| sqs_input[SQS Input Queue]
+      dev -->|runs streamlit run| streamlit_app
+    end
+  end
+
+  %% AWS Cloud Production
+  subgraph AWSCloud["AWS Cloud Production"]
+    direction TB
+    subgraph Deploy["Deployment Pipeline"]
+      repo[Code Repository] -->|docker build| docker[Docker Image]
+      docker -->|docker push| ecr[Amazon ECR]
     end
 
-    subgraph "AWS Cloud Production Environment"
-        direction TB
-        subgraph "Deployment Pipeline"
-            direction LR
-            repo[Code Repository] -->|'docker build'| docker[Docker Image]
-            docker -->|'docker push'| ecr[Amazon ECR]
-        end
-
-        subgraph "Serverless Execution"
-            direction TB
-            sqs_input[SQS Input Queue] -- "4a. Event: {'flight_id': '...'}" --> lambda_func(AWS Lambda Function)
-            ecr --> |Deploys Image| lambda_func
-            lambda_func -- "Contains" --> lambda_agent[Strands Agent (Lambda)]
-        end
+    subgraph Serverless["Serverless Execution"]
+      sqs_input -->|event 4a| lambda_func[AWS Lambda Function]
+      ecr -->|deploys image| lambda_func
+      lambda_func -->|contains| lambda_agent[Strands Agent (Lambda)]
     end
+  end
 
-    subgraph "Shared AWS & External Services"
-        direction TB
-        bedrock[Amazon Bedrock]
-        weather[Weather API]
-        sqs_output[SQS Output Queue]
-    end
+  %% Shared Services
+  subgraph Shared["Shared AWS & External Services"]
+    bedrock[Amazon Bedrock]
+    weather[Weather API]
+    sqs_output
+  end
 
-    %% --- Data and Logic Flows ---
-    local_agent --> |4. Fetches flight data| data_csv[flight_plans.csv]
-    lambda_agent --> |4b. Fetches flight data| data_csv_lambda[flight_plans.csv (in container)]
-    local_agent --> |5. Invokes LLM| bedrock
-    lambda_agent --> |5b. Invokes LLM| bedrock
-    local_agent --> |6. Fetches weather| weather
-    lambda_agent --> |6b. Fetches weather| weather
-    local_agent --> |8. Publishes Recommendation| sqs_output
-    lambda_agent --> |8b. Publishes Recommendation| sqs_output
-
-    classDef aws fill:#232F3E,stroke:#FF9900,stroke-width:2px,color:#fff;
-    class ecr,lambda_func,sqs_input,sqs_output,bedrock aws;
+  %% Data and Logic Flows
+  local_agent -->|fetch flight data| data_csv[flight_plans.csv]
+  lambda_agent -->|fetch flight data| data_csv_lambda[flight_plans.csv (container)]
+  local_agent -->|invoke LLM| bedrock
+  lambda_agent -->|invoke LLM| bedrock
+  local_agent -->|fetch weather| weather
+  lambda_agent -->|fetch weather| weather
+  local_agent -->|publish recommendation| sqs_output
+  lambda_agent -->|publish recommendation| sqs_output
 ```
 
 ---
 
 ## Technology Stack
 
-- **AI/ML**: AWS Strands SDK, Amazon Bedrock (Claude 3 Sonnet)  
-- **Cloud Provider & Serverless**: AWS Lambda, AWS SQS, Amazon Bedrock  
-- **Containerization**: Docker (for Lambda deployment)  
-- **Backend**: Python 3.11+  
-- **Core Libraries**: Pandas, OpenAP, Boto3, Requests, python-dotenv  
-- **Local UI**: Streamlit Mission Control Dashboard  
+- **AI/ML**: AWS Strands SDK, Amazon Bedrock (Claude 3 Sonnet)
+- **Cloud Provider & Serverless**: AWS Lambda, AWS SQS, Amazon Bedrock
+- **Containerization**: Docker (for Lambda deployment)
+- **Backend**: Python 3.11+
+- **Core Libraries**: Pandas, OpenAP, Boto3, Requests, python-dotenv
+- **Local UI**: Streamlit Mission Control Dashboard
 
 ---
 
@@ -107,10 +103,10 @@ The primary method for deploying the agent is via AWS Lambda using a container i
 ### Essential Files for Deployment
 
 The Docker build process bundles the following files into the container image:
-- Dockerfile  
-- requirements-lambda.txt  
-- lambda_handler.py (contains all agent logic)  
-- flight_plans.csv  
+- Dockerfile
+- requirements-lambda.txt
+- lambda_handler.py (contains all agent logic)
+- flight_plans.csv
 
 ### Deployment Steps
 
@@ -126,7 +122,7 @@ docker build --no-cache -t fuel-optimization-agent .
 ## Local Setup and Testing Guide
 
 ### Step 1: Clone & Configure
-1. Clone the repository.  
+1. Clone the repository.
 2. Rename `.env.example` to `.env` and fill in your AWS credentials and both SQS queue URLs.
 
 ### Step 2: Install Dependencies
@@ -145,14 +141,12 @@ pip install -r requirements.txt
 You have two main ways to interact with the project on your local machine.
 
 #### Option A: Run the Notebook-Style Runner (for direct testing)
-
 This script is great for quick, self-contained testing and experimentation directly in your terminal.
 ```bash
 python notebook_style_runner.py UA123
 ```
 
 #### Option B: Launch the Mission Control Dashboard (Recommended UI)
-
 This provides a full web interface to trigger agent runs and view results.
 ```bash
 streamlit run streamlit_dashboard.py
