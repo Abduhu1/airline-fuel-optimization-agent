@@ -1,0 +1,40 @@
+--- Environment Files ---
+Never commit your secret credentials!
+.env
+.env.*
+!.env.example
+
+--- Python Virtual Environments ---
+.venv/
+venv/
+env/
+ENV/
+*.env
+
+--- Python Cache & Bytecode ---
+pycache/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+--- IDE & Editor Folders ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+--- OS-specific Files ---
+.DS_Store
+Thumbs.db
+
+--- Build & Distribution Artifacts ---
+/dist/
+/build/
+*.egg-info/
+*.egg
+
+--- Testing & Coverage ---
+.pytest_cache/
+.coverage
+htmlcov/

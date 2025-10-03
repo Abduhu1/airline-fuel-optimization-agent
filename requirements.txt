@@ -1,0 +1,10 @@
+strands-agents
+strands-agents-tools
+strands-agents-builder
+fastmcp
+openap
+pandas
+boto3 
+requests
+streamlit 
+pyngrok

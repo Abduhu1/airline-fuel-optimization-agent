@@ -1,0 +1,8 @@
+Core requirements for the AWS Lambda function
+strands-agents
+openap
+boto3
+requests
+pandas
+numpy==1.26.4
+python-dotenv
