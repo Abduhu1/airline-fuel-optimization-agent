@@ -1,168 +1,243 @@
-# Airline Fuel Optimization Agent
+# **Airline Fuel Optimization Agent**
 
-An AI agent, built with the AWS Strands SDK, that analyzes flight plans and weather data to recommend the most fuel-efficient route and altitude profile. This agent is designed for and has been tested with serverless deployment on AWS Lambda.
+([https://img.shields.io/badge/AWS-Bedrock%2C%20Lambda%2C%20SQS-orange.svg](https://www.google.com/search?q=https://img.shields.io/badge/AWS-Bedrock%252C%2520Lambda%252C%2520SQS-orange.svg))\]([https://aws.amazon.com/](https://aws.amazon.com/)) ([https://img.shields.io/badge/Streamlit-Dashboard-ff4b4b](https://www.google.com/search?q=https://img.shields.io/badge/Streamlit-Dashboard-ff4b4b))\]([https://streamlit.io](https://streamlit.io))
 
----
+## **1\. Overview**
 
-## Overview
+The Airline Fuel Optimization Agent is a sophisticated proof-of-concept system that leverages an AI agent to analyze flight plans, real-time weather data, and aircraft performance models. Its mission is to recommend the most fuel-efficient flight routes and altitude profiles, directly addressing a critical operational cost for airlines.
 
-This project implements an autonomous AI agent designed to tackle the complex challenge of airline fuel optimization. The agent orchestrates a series of tools to fetch flight data, retrieve weather forecasts, and execute a sophisticated A* search algorithm to discover the path with the lowest possible fuel consumption.
+This project demonstrates a modern, cloud-native, and decoupled architecture using **AWS Strands** for agentic orchestration, **Amazon Bedrock** for AI reasoning, and a robust **A\* search algorithm** for its core optimization logic. The entire workflow is designed to be event-driven and scalable, using **AWS SQS** as the primary message bus to separate the user-facing dashboard from the backend processing agent.
 
-The system is architected with a serverless-first philosophy. While it can be run locally for testing, the primary deployment target is AWS Lambda, allowing for a scalable, event-driven, and cost-efficient solution. The agent communicates its findings asynchronously via an AWS SQS queue, making it a robust and decoupled component for integration into modern aviation operations systems.
+## **2\. System Architecture**
 
----
+The system is designed as a decoupled, event-driven workflow, ensuring scalability and resilience. The user interface is separated from the core agentic processing via AWS SQS message queues, which act as the primary communication bus.
 
-## Architecture
+Code snippet
 
-The system uses a message-driven, serverless architecture. The primary execution environment is AWS Lambda, but the project also supports local development and visualization with an interactive Streamlit dashboard.
+graph TD  
+    subgraph User Interface & Interaction  
+        A\[Operator\] \-- 1\. Initiates Optimization \--\> B{Streamlit Dashboard};  
+        B \-- 2\. Publishes Flight ID to SQS\_Input\_Queue \--\> C;  
+    end
 
-```mermaid
-graph TD
-  %% === Local Development & Testing ===
-  subgraph LOCAL_DEV["Local Development & Testing"]
-    direction LR
-    dev[Developer]
-    cli[CLI Runner]
-    env_file[.env file]
-    local_agent[Strands Agent Local]
-    streamlit[Streamlit Dashboard]
-    sqs_in[SQS Input Queue]
-    sqs_out[SQS Output Queue]
+    subgraph Agentic Core on AWS Lambda  
+        D{Lambda Trigger} \-- 3\. Triggered by SQS Message \--\> E;  
+        E \-- 4\. Executes System Prompt \--\> E;  
+        E \-- 5\. Calls 'get\_flight\_plan' tool \--\> F\[flight\_plans.csv\];  
+        F \-- 6\. Returns Flight Plan \--\> E;  
+        E \-- 7\. Calls 'get\_weather\_for\_route' tool \--\> G;  
+        G \-- 8\. Returns Weather Data \--\> E;  
+        E \-- 9\. Calls 'run\_fuel\_optimization' tool \--\> H\[A\* Optimization Engine w/ OpenAP\];  
+        H \-- 10\. Returns Optimized Route \--\> E;  
+        E \-- 11\. Calls 'publish\_recommendation' tool \--\> I{boto3 SQS Client};  
+    end
 
-    dev -->|run local command| cli
-    cli -->|load config| env_file
-    cli -->|execute agent| local_agent
-    dev -->|start dashboard| streamlit
-    streamlit -->|send trigger| sqs_in
-    streamlit -->|poll results| sqs_out
-  end
+    subgraph Reporting Bus  
+        I \-- 12\. Sends Recommendation Message \--\> K;  
+    end
 
-  %% === AWS Cloud Production ===
-  subgraph AWS_CLOUD["AWS Cloud Production"]
-    direction TB
-    repo[Code Repository]
-    docker_img[Docker Image]
-    ecr[ECR Repository]
-    lambda_fn[AWS Lambda Function]
-    lambda_agent[Strands Agent Lambda]
+    subgraph Reporting & Monitoring  
+        B \-- 13\. Polls SQS\_Output\_Queue for Results \--\> K;  
+        K \-- 14\. Delivers Recommendation Message \--\> B;  
+        B \-- 15\. Displays Results \--\> A;  
+    end
 
-    repo -->|docker build| docker_img
-    docker_img -->|push| ecr
-    sqs_in -->|event| lambda_fn
-    ecr -->|deploy image| lambda_fn
-    lambda_fn -->|runs| lambda_agent
-  end
+    style C fill:\#FF9900,stroke:\#333,stroke-width:2px  
+    style K fill:\#FF9900,stroke:\#333,stroke-width:2px  
+    style E fill:\#232F3E,stroke:\#FF9900,stroke-width:2px,color:\#fff  
+    style B fill:\#FF4B4B,stroke:\#333,stroke-width:2px,color:\#fff
 
-  %% === Shared Services ===
-  subgraph SHARED["Shared Services"]
-    bedrock[Amazon Bedrock]
-    weather_api[Weather API]
-  end
+## **3\. Features**
 
-  %% === Data Flows ===
-  local_agent -->|fetch flight data| flight_csv[flight_plans.csv]
-  lambda_agent -->|fetch flight data| flight_csv_lambda[flight_plans.csv container]
+* **Agent-Driven Workflow:** Utilizes the **AWS Strands SDK** for a model-driven agent that orchestrates the entire optimization process.  
+* **A\* Based Optimization:** Implements a scientifically sound A\* search algorithm to find the optimal path across a 3D graph of waypoints and flight levels.  
+* **Physics-Based Fuel Modeling:** Integrates the openap library to provide credible fuel burn estimates.  
+* **Real-time Weather Integration:** Fetches current METAR and TAF weather reports to inform the optimization model.  
+* **Decoupled & Scalable Architecture:** Uses **AWS SQS** as a robust, cloud-native message bus to create a resilient, event-driven system.  
+* **Interactive Dashboard:** A **Streamlit**\-based "Mission Control Dashboard" provides a user-friendly interface for initiating optimizations and viewing results.  
+* **Cloud-Native Deployment:** Containerized with **Docker** for reproducible and scalable deployment on serverless platforms like **AWS Lambda**.
 
-  local_agent -->|invoke llm| bedrock
-  lambda_agent -->|invoke llm| bedrock
+## **4\. Technology Stack**
 
-  local_agent -->|fetch weather| weather_api
-  lambda_agent -->|fetch weather| weather_api
+| Technology | Role |
+| :---- | :---- |
+| 🐍 **Python 3.11+** | Core programming language for all components. |
+| 🧠 **AWS Strands** | Open-source SDK for building the AI agent. |
+| 🤖 **Amazon Bedrock** | Provides the Claude 3 Sonnet LLM for agent reasoning. |
+| 📨 **AWS SQS** | Cloud-native message queue for decoupling services. |
+| 📦 **Docker** | Containerization for reproducible deployment. |
+| ☁️ **AWS Lambda** | Serverless compute for the backend agent. |
+| 📊 **Streamlit** | Framework for the interactive web dashboard. |
+| ✈️ **OpenAP** | Library for aircraft performance modeling. |
 
-  local_agent -->|publish recommendation| sqs_out
-  lambda_agent -->|publish recommendation| sqs_out
-```
+## **5\. Dataset Used**
 
----
+The proof-of-concept relies on a sample dataset named flight\_plans.csv. This file contains mock flight plans that serve as the input for the optimization agent.
 
-## Technology Stack
+**File Structure:**
 
-- **AI/ML**: AWS Strands SDK, Amazon Bedrock (Claude 3 Sonnet)
-- **Cloud Provider & Serverless**: AWS Lambda, AWS SQS, Amazon Bedrock
-- **Containerization**: Docker (for Lambda deployment)
-- **Backend**: Python 3.11+
-- **Core Libraries**: Pandas, OpenAP, Boto3, Requests, python-dotenv
-- **Local UI**: Streamlit Mission Control Dashboard
+| Column | Data Type | Description | Example |
+| :---- | :---- | :---- | :---- |
+| flight\_id | String | A unique identifier for the flight. | UA123 |
+| origin\_airport | String | The ICAO code for the flight's origin airport. | KJFK |
+| destination\_airport | String | The ICAO code for the flight's destination airport. | KSFO |
+| waypoints | String | A JSON-formatted list of ICAO codes representing the flight path. | "" |
+| initial\_mass\_kg | Integer | The initial take-off mass of the aircraft in kilograms. | 150000 |
+| aircraft\_type | String | The ICAO code for the specific aircraft model. | B772 |
 
----
+## **6\. Setup and Installation Guide**
 
-## AWS Prerequisites & IAM Policies
+This project is designed to be platform-independent. This guide provides distinct instructions for local development (using Conda or venv) and cloud-based development with Google Colab.
 
-Before running this project, you must configure the necessary AWS resources and permissions. See the guide in this document for creating an IAM User, enabling Bedrock Model Access, and the minimal IAM policies for Bedrock, SQS, and ECR.
+### **A. Local Environment (Conda)**
 
----
+*Recommended for a clean, isolated environment on Windows, macOS, or Linux.*
 
-## Code Structure
+1. **Prerequisites:**  
+   * Git  
+   * Anaconda or Miniconda  
+2. **Clone the Repository:**  
+   Bash  
+   git clone https://github.com/YOUR\_USERNAME/airline-fuel-optimizer.git  
+   cd airline-fuel-optimizer
 
-This project provides separate, self-contained Python scripts for cloud deployment and local development:
+3. **Create and Activate Conda Environment:**  
+   Bash  
+   conda create \-n fuel\_agent python=3.11 \-y  
+   conda activate fuel\_agent
 
-- **lambda_handler.py**: The all-in-one script for AWS Lambda. It contains the complete agent logic and the handler function required by AWS. This is the only application script needed for the production deployment.
-- **notebook_style_runner.py**: A self-contained script for easy, interactive testing in a local IDE (like VS Code or PyCharm). It is a great starting point for experimentation.
-- **streamlit_dashboard.py**: A fully-featured, platform-independent web dashboard for local use. It can trigger new agent runs and display the results, serving as a complete mission control UI.
-- **requirements.txt**: Dependencies for local development.
-- **requirements-lambda.txt**: Minimal dependencies for the production AWS Lambda deployment.
+4. **Install Dependencies:** This project uses requirements.txt for local development.  
+   Bash  
+   pip install \-r requirements.txt
 
----
+5. Configure AWS Credentials:  
+   IMPORTANT: Never hardcode your credentials. Set them as environment variables.  
+   * **On macOS/Linux:**  
+     Bash  
+     export AWS\_ACCESS\_KEY\_ID="YOUR\_KEY\_HERE"  
+     export AWS\_SECRET\_ACCESS\_KEY="YOUR\_SECRET\_HERE"  
+     export AWS\_REGION="us-east-1" \# Or your preferred region
 
-## Deployment (Production on AWS Lambda)
+   * **On Windows (Command Prompt):**  
+     DOS  
+     set AWS\_ACCESS\_KEY\_ID="YOUR\_KEY\_HERE"  
+     set AWS\_SECRET\_ACCESS\_KEY="YOUR\_SECRET\_HERE"  
+     set AWS\_REGION="us-east-1"
 
-The primary method for deploying the agent is via AWS Lambda using a container image.
+### **B. Local Environment (venv)**
 
-### Essential Files for Deployment
+*An alternative to Conda using Python's built-in virtual environment manager.*
 
-The Docker build process bundles the following files into the container image:
-- Dockerfile
-- requirements-lambda.txt
-- lambda_handler.py (contains all agent logic)
-- flight_plans.csv
+1. **Prerequisites & Cloning:** Follow steps 1 and 2 from the Conda setup.  
+2. **Create and Activate Virtual Environment:**  
+   * **On macOS/Linux:**  
+     Bash  
+     python3 \-m venv venv  
+     source venv/bin/activate
 
-### Deployment Steps
+   * **On Windows:**  
+     DOS  
+     python \-m venv venv
 
-1. **Build the Docker Image:**
-```bash
-docker build --no-cache -t fuel-optimization-agent .
-```
+.\\venv\\Scripts\\activate\`\`\`
 
-2. **Push to Amazon ECR and create the Lambda function from the container image**, assigning the correct IAM execution role and environment variables.
+3. **Install Dependencies & Configure Credentials:** Follow steps 4 and 5 from the Conda setup.
 
----
+### **C. Cloud Environment (Google Colab)**
 
-## Local Setup and Testing Guide
+*Ideal for a standardized, cloud-based development environment that ensures perfect reproducibility.*
 
-### Step 1: Clone & Configure
-1. Clone the repository.
-2. Rename `.env.example` to `.env` and fill in your AWS credentials and both SQS queue URLs.
+1. **Upload Project Files:**  
+   * In a new Google Colab notebook, use the file browser on the left to upload all your project files (.py files, .csv, requirements.txt, etc.).  
+2. **Configure AWS Credentials (Securely):**  
+   * In the Colab interface, click the **"Key"** icon in the left sidebar to open the **Secrets Manager**.  
+   * Create two new secrets: AWS\_ACCESS\_KEY\_ID and AWS\_SECRET\_ACCESS\_KEY.  
+   * Paste your corresponding AWS credentials into the value fields. This is the most secure way to handle secrets in Colab.  
+3. Setup Cell:  
+   In the first cell of your notebook, run the following commands to install dependencies and load your secrets into the environment.  
+   Python  
+   \# Install all required packages from your requirements file
 
-### Step 2: Install Dependencies
-```bash
-# Create and activate a virtual environment
-python -m venv venv
-# On Windows: venv\Scripts\activate
-# On macOS/Linux: source venv/bin/activate
+\!pip install \-r requirements.txt
 
-# Install all required Python packages for local development
-pip install -r requirements.txt
-```
+\# Load secrets securely into the environment  
+import os  
+from google.colab import userdata
 
-### Step 3: Run the Application Locally
+os.environ \= userdata.get('AWS\_ACCESS\_KEY\_ID')  
+os.environ \= userdata.get('AWS\_SECRET\_ACCESS\_KEY')  
+os.environ \= "us-east-1" \# Or your preferred region  
+\`\`\`
 
-You have two main ways to interact with the project on your local machine.
+## **7\. How to Run the Application**
 
-#### Option A: Run the Notebook-Style Runner (for direct testing)
-This script is great for quick, self-contained testing and experimentation directly in your terminal.
-```bash
-python notebook_style_runner.py UA123
-```
+Follow these steps to run the full application workflow in your local or Colab environment.
 
-#### Option B: Launch the Mission Control Dashboard (Recommended UI)
-This provides a full web interface to trigger agent runs and view results.
-```bash
-streamlit run streamlit_dashboard.py
-```
+### **Step 0: (Optional) Test Connectivity**
 
----
+Before running the full application, you can use initial\_connectivity\_test.py to verify that your environment is correctly configured to communicate with AWS Bedrock.
 
-## License
+Bash
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+python initial\_connectivity\_test.py
 
+A successful run will print a response from the AI model, confirming your credentials and permissions are working.
+
+### **Step 1: Start the User Interface**
+
+The **Streamlit Dashboard** is the primary user interface for this application. It allows you to initiate optimization tasks and view the results.
+
+Open a terminal (with your virtual environment activated) and run:
+
+Bash
+
+streamlit run streamlit1.py
+
+This will open the dashboard in your web browser. Interacting with the dashboard will send a message to your input SQS queue, ready to be processed by the agent.
+
+### **Step 2: Run the Agent Logic**
+
+The main agent logic in evaluation\_codefile.py is designed to be triggered by an event in the cloud. For local testing, you can run this file directly. It will perform the optimization and publish the result to your output SQS queue.
+
+Open a **separate terminal** (with your environment activated) and run:
+
+Bash
+
+python evaluation\_codefile.py
+
+**Note:** For this to work, evaluation\_codefile.py should contain a main execution block (e.g., if \_\_name\_\_ \== "\_\_main\_\_"). This is a standard Python practice that makes a module runnable as a script for testing purposes.
+
+### **Step 3: View Results**
+
+Go back to your Streamlit dashboard in the browser and click the **"Check for New Recommendations"** button. The dashboard will poll the output SQS queue and display the optimization results sent by the agent.
+
+## **8\. Deployment to AWS Lambda**
+
+The core agent is designed for serverless deployment on **AWS Lambda** using a container image. This section outlines the process.
+
+### **Dependency Management**
+
+This project uses two separate requirements files:
+
+* requirements.txt: For local development and IDE support.  
+* requirements-lambda.txt: A minimal set of dependencies for the production Lambda environment.
+
+### **Dockerfile Configuration**
+
+The provided Dockerfile2 is configured to build the Lambda deployment package. It expects the Lambda handler code to be in a file named lambda\_handler.py and the dependencies to be listed in requirements-lambda.txt.
+
+### **Build and Deploy Steps**
+
+1. Build the Docker Image:  
+   This command builds the container image. The \--no-cache flag is recommended to ensure a fresh build with the latest versions of your files and base images.  
+   Bash  
+   docker build \--no-cache \-t fuel-optimization-agent \-f Dockerfile2.
+
+2. Push to Amazon ECR:  
+   Push the built image to an Amazon Elastic Container Registry (ECR) repository in your AWS account.  
+3. Create Lambda Function:  
+   Create a new AWS Lambda function. In the configuration, select "Container image" and provide the Image URI from your ECR repository. Set up an SQS trigger to invoke the function automatically when new flight optimization requests arrive in your input queue.
+
+## **9\. License**
+
+This project is licensed under the MIT License. See the LICENSE file for details.
