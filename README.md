@@ -8,7 +8,8 @@ This project demonstrates a modern, cloud-native, and decoupled architecture usi
 
 ## **2\. System Architecture**
 
-<figure>
+
+
 ```mermaid
 graph TD
   A[Operator] --> B[Dashboard]
@@ -22,8 +23,10 @@ graph TD
   I --> J[SQS_Output_Queue]
   J --> B
 ```
-<figcaption><strong>Figure:</strong> System architecture (minimal Mermaid). If Mermaid doesn't render on your GitHub instance, add a PNG fallback at <code>/diagrams/arch.png</code>.</figcaption>
-</figure>
+
+
+*Figure: System architecture (minimal Mermaid). If Mermaid doesn't render on your GitHub instance, add a PNG fallback at `/diagrams/arch.png`.*
+
 
 
 ## **3\. Features**
@@ -114,7 +117,10 @@ The proof-of-concept relies on a sample dataset named flight_plans.csv. This fil
    \!pip install -r requirements.txt
 
    # Load secrets securely into the environment  
-   import os  
+```python
+import os
+```
+
    from google.colab import userdata
 
    os.environ['AWS_ACCESS_KEY_ID'] \= userdata.get('AWS_ACCESS_KEY_ID')  
